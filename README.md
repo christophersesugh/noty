@@ -18,3 +18,4 @@ Welcome to Noty, your all-in-one note-taking app that combines the power of spee
 
 
 Follow me on [Twitter](https://twitter.com/meet_tola) 
+# noty
