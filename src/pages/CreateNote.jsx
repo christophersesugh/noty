@@ -14,8 +14,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import Spinner from '../components/Spinner';
 
 const API_KEY = import.meta.env.VITE_APP_GEMINI_API_KEY;
-// ??
-// process.env.VITE_APP_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const CreateNote = ({ setNotes }) => {
