@@ -1,31 +1,34 @@
 import 'regenerator-runtime/runtime';
-import { useState, useEffect } from "react";
-import { v4 as uuid } from "uuid";
-import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
-import { Link, useNavigate } from "react-router-dom";
-import { IoIosArrowBack } from "react-icons/io";
+import { useState, useEffect } from 'react';
+import { v4 as uuid } from 'uuid';
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from 'react-speech-recognition';
+import { Link, useNavigate } from 'react-router-dom';
+import { IoIosArrowBack } from 'react-icons/io';
+import { FaEarListen } from 'react-icons/fa6';
 import { BsFillMicFill } from 'react-icons/bs';
 import { MdAutoAwesome } from 'react-icons/md';
-import useCreateDate from "../components/useCreateDate";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import useCreateDate from '../components/useCreateDate';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import Spinner from '../components/Spinner';
 
-const API_KEY = import.meta.env.VITE_APP_GEMINI_API_KEY || process.env.VITE_APP_GEMINI_API_KEY;
+const API_KEY = import.meta.env.VITE_APP_GEMINI_API_KEY;
+// ??
+// process.env.VITE_APP_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const CreateNote = ({ setNotes }) => {
-  const [title, setTitle] = useState("");
-  const [details, setDetails] = useState("");
+  const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const date = useCreateDate();
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
-  const [previousTranscript, setPreviousTranscript] = useState("");
-  const {
-    transcript,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
+  const [isReading, setIsReading] = useState(false);
+  const [previousTranscript, setPreviousTranscript] = useState('');
+  const { transcript, resetTranscript, browserSupportsSpeechRecognition } =
+    useSpeechRecognition();
 
   const startListening = () => {
     if (isRecording) {
@@ -50,12 +53,12 @@ const CreateNote = ({ setNotes }) => {
     }
   }, [isRecording, transcript, previousTranscript]);
 
-  const handleManualEdit = (e) => {
+  const handleManualEdit = e => {
     const editedText = e.target.value;
     setDetails(editedText);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
 
     if (title && details) {
@@ -66,18 +69,18 @@ const CreateNote = ({ setNotes }) => {
         setLoading(false); // Set loading to false after API call
 
         const note = { id: uuid(), title, details: correctedText, date };
-        setNotes((prevNotes) => [note, ...prevNotes]);
-        navigate("/");
+        setNotes(prevNotes => [note, ...prevNotes]);
+        navigate('/');
       } catch (error) {
         setLoading(false); // Set loading to false if there's an error
-        console.error("Error while handling the form submit:", error);
+        console.error('Error while handling the form submit:', error);
       }
     }
   };
 
-  const callGeminiAPI = async (text) => {
+  const callGeminiAPI = async text => {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: 'gemini-1.5-flash',
     });
 
     const generationConfig = {
@@ -85,37 +88,55 @@ const CreateNote = ({ setNotes }) => {
       topP: 0.95,
       topK: 64,
       maxOutputTokens: 64,
-      responseMimeType: "text/plain",
+      responseMimeType: 'text/plain',
     };
 
     const chatSession = model.startChat({
       generationConfig,
       history: [
         {
-          role: "user",
-          parts: [{ text: `You will be provided with statements, and your task is to rewrite them correctly in standard English. "${text}"` }],
+          role: 'user',
+          parts: [
+            {
+              text: `You will be provided with statements, and your task is to rewrite them correctly in standard English. "${text}"`,
+            },
+          ],
         },
       ],
     });
 
     try {
-      const result = await chatSession.sendMessage("");
+      const result = await chatSession.sendMessage('');
       return result.response.text() || text;
     } catch (error) {
-      console.error("Error calling Gemini AI API:", error);
+      console.error('Error calling Gemini AI API:', error);
       return text;
     }
   };
 
   const handleAICorrection = async () => {
     try {
-      setLoading(true); 
+      setLoading(true);
       const correctedText = await callGeminiAPI(details);
       setLoading(false);
       setDetails(correctedText);
     } catch (error) {
       setLoading(false);
-      console.error("Error while correcting text with AI:", error);
+      console.error('Error while correcting text with AI:', error);
+    }
+  };
+
+  const handleReadAloud = () => {
+    if (!('speechSynthesis' in window) || !details) return;
+
+    if (isReading) {
+      speechSynthesis.cancel();
+      setIsReading(false);
+    } else {
+      const utterance = new SpeechSynthesisUtterance(details);
+      utterance.onstart = () => setIsReading(true);
+      utterance.onend = () => setIsReading(false);
+      speechSynthesis.speak(utterance);
     }
   };
 
@@ -138,7 +159,7 @@ const CreateNote = ({ setNotes }) => {
           type="text"
           placeholder="Title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={e => setTitle(e.target.value)}
           autoFocus
         />
         <textarea
@@ -151,6 +172,13 @@ const CreateNote = ({ setNotes }) => {
       <div className="btn ai__btn" onClick={handleAICorrection}>
         {loading ? <Spinner /> : <MdAutoAwesome />}
       </div>
+
+      {details ? (
+        <div className="btn read__btn" onClick={handleReadAloud}>
+          <FaEarListen />
+          {isReading && <ListeningMessage />}
+        </div>
+      ) : null}
       <div className="btn add__btn" onClick={startListening}>
         <BsFillMicFill />
         {isRecording && <RecordingMessage />}
@@ -163,5 +191,8 @@ const RecordingMessage = () => {
   return <div className="recording-message">Recording...</div>;
 };
 
+const ListeningMessage = () => (
+  <div className="recording-message">Listening...</div>
+);
 
 export default CreateNote;
